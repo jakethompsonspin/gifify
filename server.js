@@ -11,6 +11,7 @@ import fs from 'fs';
 import { downloadVideo } from './utils/download.js';
 import { convertToGif, convertToVideo } from './utils/convert.js';
 
+// Load environment variables
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +20,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Logging and JSON parsing
 app.use(morgan('dev'));
 app.use(bodyParser.json({ limit: '2mb' }));
 
@@ -39,6 +41,7 @@ app.use('/output', express.static(path.join(__dirname, 'output'), {
   }
 }));
 
+// Helper to validate supported links
 function isSupportedLink(urlStr) {
   try {
     const u = new URL(urlStr);
@@ -54,6 +57,7 @@ function isSupportedLink(urlStr) {
   }
 }
 
+// Main conversion endpoint
 app.post('/api/convert', async (req, res) => {
   const { url, targetSizeMB, maxWidth, fps, mute, startTime, duration, removeWatermark, exportMp4, exportWebm } = req.body || {};
   if (!url || !isSupportedLink(url)) {
@@ -65,17 +69,19 @@ app.post('/api/convert', async (req, res) => {
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
   if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
 
+  // Parse numeric options with fallbacks
   const maxMB = Number(targetSizeMB) > 0 ? Number(targetSizeMB) : Number(process.env.MAX_GIF_MB || 50);
   const width = Number(maxWidth) > 0 ? Number(maxWidth) : Number(process.env.DEFAULT_WIDTH || 480);
   const frameRate = Number(fps) > 0 ? Number(fps) : Number(process.env.DEFAULT_FPS || 12);
   const shouldMute = mute !== false;
 
-  // Start/duration: allow null or empty string; treat empty string as null
+  // Normalize start/duration values
   const start = startTime && String(startTime).trim() !== '' ? String(startTime).trim() : null;
   const dur = duration && Number(duration) > 0 ? Number(duration) : null;
   const rmWatermark = !!removeWatermark;
-  const exportMp4Flag = exportMp4 === undefined ? true : !!exportMp4;
-  const exportWebmFlag = exportWebm === undefined ? true : !!exportWebm;
+  // Default export flags to false when undefined; user must explicitly enable
+  const exportMp4Flag = exportMp4 === undefined ? false : !!exportMp4;
+  const exportWebmFlag = exportWebm === undefined ? false : !!exportWebm;
 
   let inputPath = '';
   const gifPath = path.join(outDir, `${id}.gif`);
@@ -83,11 +89,11 @@ app.post('/api/convert', async (req, res) => {
   const webmPath = path.join(outDir, `${id}.webm`);
   let info = {};
   try {
-    // Download video
+    // 1) Download the source video
     const dl = await downloadVideo(url, tmpDir, id, shouldMute);
     inputPath = dl.file;
     info = dl.info;
-    // Convert to GIF
+    // 2) Convert to GIF iteratively
     const convGif = await convertToGif({
       input: inputPath,
       output: gifPath,
@@ -117,57 +123,68 @@ app.post('/api/convert', async (req, res) => {
       },
       notes: convGif.notes
     };
-    // Convert to MP4 if requested
+    // 3) Optionally convert to MP4
     if (exportMp4Flag) {
-      await convertToVideo({
-        input: inputPath,
-        output: mp4Path,
-        format: 'mp4',
-        width: width,
-        fps: frameRate,
-        startTime: start,
-        duration: dur,
-        removeWatermark: rmWatermark
-      });
-      const mp4Stats = fs.statSync(mp4Path);
-      response.mp4 = {
-        url: `/output/${path.basename(mp4Path)}`,
-        sizeMB: Number((mp4Stats.size / (1024 * 1024)).toFixed(2)),
-        width: width,
-        fps: frameRate
-      };
+      try {
+        await convertToVideo({
+          input: inputPath,
+          output: mp4Path,
+          format: 'mp4',
+          width: width,
+          fps: frameRate,
+          startTime: start,
+          duration: dur,
+          removeWatermark: rmWatermark
+        });
+        const mp4Stats = fs.statSync(mp4Path);
+        response.mp4 = {
+          url: `/output/${path.basename(mp4Path)}`,
+          sizeMB: Number((mp4Stats.size / (1024 * 1024)).toFixed(2)),
+          width: width,
+          fps: frameRate
+        };
+      } catch (err) {
+        console.error('MP4 conversion failed:', err);
+      }
     }
-    // Convert to WebM if requested
+    // 4) Optionally convert to WebM
     if (exportWebmFlag) {
-      await convertToVideo({
-        input: inputPath,
-        output: webmPath,
-        format: 'webm',
-        width: width,
-        fps: frameRate,
-        startTime: start,
-        duration: dur,
-        removeWatermark: rmWatermark
-      });
-      const webmStats = fs.statSync(webmPath);
-      response.webm = {
-        url: `/output/${path.basename(webmPath)}`,
-        sizeMB: Number((webmStats.size / (1024 * 1024)).toFixed(2)),
-        width: width,
-        fps: frameRate
-      };
+      try {
+        await convertToVideo({
+          input: inputPath,
+          output: webmPath,
+          format: 'webm',
+          width: width,
+          fps: frameRate,
+          startTime: start,
+          duration: dur,
+          removeWatermark: rmWatermark
+        });
+        const webmStats = fs.statSync(webmPath);
+        response.webm = {
+          url: `/output/${path.basename(webmPath)}`,
+          sizeMB: Number((webmStats.size / (1024 * 1024)).toFixed(2)),
+          width: width,
+          fps: frameRate
+        };
+      } catch (err) {
+        console.error('WebM conversion failed:', err);
+      }
     }
+    // Respond with results
     res.json(response);
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, error: err.message || 'Conversion failed.' });
   } finally {
+    // Clean up temporary video
     if (inputPath && fs.existsSync(inputPath)) {
       try { fs.unlinkSync(inputPath); } catch {}
     }
   }
 });
 
+// Health endpoint
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
