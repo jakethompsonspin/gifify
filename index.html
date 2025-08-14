@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GIFify — IG/TikTok → GIF/MP4/WebM</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <meta name="description" content="Paste an Instagram or TikTok link and get downloadable GIF, MP4, and WebM with optional trimming and watermark removal." />
+</head>
+<body>
+  <header>
+    <div class="brand">GIFify</div>
+    <nav>
+      <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener">yt-dlp</a>
+      <a href="https://ffmpeg.org/" target="_blank" rel="noopener">FFmpeg</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="card">
+      <h1>Instagram or TikTok → GIF/MP4/WebM</h1>
+      <p class="muted">Paste a post link. We’ll fetch the video, trim if you like, remove watermarks and convert to GIF, MP4 and WebM.</p>
+
+      <form id="convert-form">
+        <label for="url">Post URL</label>
+        <div class="input-row">
+          <input id="url" type="url" placeholder="https://www.tiktok.com/@user/video/..." required />
+          <button id="go" type="submit">Convert</button>
+        </div>
+
+        <details class="advanced">
+          <summary>Advanced options</summary>
+          <div class="grid">
+            <div>
+              <label for="size">Max GIF size (MB)</label>
+              <input id="size" type="number" min="1" max="200" value="50" />
+            </div>
+            <div>
+              <label for="width">Start width (px)</label>
+              <input id="width" type="number" min="240" max="1080" value="480" />
+            </div>
+            <div>
+              <label for="fps">Start FPS</label>
+              <input id="fps" type="number" min="6" max="30" value="12" />
+            </div>
+            <div>
+              <label for="startTime">Start time</label>
+              <input id="startTime" type="text" placeholder="0 or HH:MM:SS" />
+            </div>
+            <div>
+              <label for="duration">Duration (sec)</label>
+              <input id="duration" type="number" min="1" max="600" placeholder="" />
+            </div>
+            <div class="checkbox-group">
+              <label><input id="removeWatermark" type="checkbox" /> Remove watermark</label>
+            </div>
+            <div class="checkbox-group">
+              <label><input id="exportMp4" type="checkbox" checked /> Export MP4</label>
+            </div>
+            <div class="checkbox-group">
+              <label><input id="exportWebm" type="checkbox" checked /> Export WebM</label>
+            </div>
+          </div>
+        </details>
+
+        <p class="tiny muted">Use only content you own or have permission to download. Respect platform Terms.</p>
+      </form>
+
+      <div id="status" class="status"></div>
+
+      <div id="result" class="result hidden">
+        <div class="preview-wrap">
+          <img id="preview" alt="GIF preview" />
+        </div>
+        <div class="meta">
+          <div id="meta"></div>
+          <div class="actions">
+            <a id="downloadGif" class="button" download>Download GIF</a>
+            <a id="downloadMp4" class="button secondary" download>Download MP4</a>
+            <a id="downloadWebm" class="button secondary" download>Download WebM</a>
+            <button id="reset" class="secondary">Convert another</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p class="tiny muted">Built with yt-dlp + FFmpeg. No files are stored long-term; generated files are static-served.</p>
+  </footer>
+
+  <template id="spinner">
+    <div class="spinner" role="status" aria-live="polite">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+      <span>Converting… this can take a minute.</span>
+    </div>
+  </template>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

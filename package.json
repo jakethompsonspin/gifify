@@ -1,0 +1,23 @@
+{
+  "name": "gifify-link",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Paste an Instagram or TikTok link, get a GIF/MP4/WebM under a target size with optional trimming and watermark removal.",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "NODE_ENV=development node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "morgan": "^1.10.0",
+    "nanoid": "^5.0.7"
+  }
+}
